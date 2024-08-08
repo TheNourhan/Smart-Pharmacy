@@ -1,1 +1,1 @@
-# Smart-Pharmacy
+# Smart Pharmacy
