@@ -1,0 +1,9 @@
+version: "3"
+services:
+  node-app: 
+    container_name: smart-pharmacy-container
+    build: .
+    volumes:
+      - ./src:/app/src:ro
+    ports:
+      - "3000:3000"

@@ -1,0 +1,8 @@
+/node_modules
+/docs
+Dockerfile
+.env
+docker-compose*
+*md
+*drawio
+dist
