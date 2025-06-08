@@ -3,6 +3,7 @@ dotenv.config();
 
 import express from 'express';
 import authRoutes from './routes/auth';
+import empRoutes from './routes/emp';
 import { AppDataSource } from './data-source';
 
 const app = express();
@@ -18,6 +19,7 @@ AppDataSource.initialize()
   });
   
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/employees', empRoutes);
 
 app.listen(process.env.PORT || 3000, () => {
     console.log(`Server running on port: ${process.env.PORT || 3000}`);

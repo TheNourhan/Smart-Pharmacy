@@ -22,7 +22,7 @@ export const signUp = async (req: Request, res: Response) => {
     const { firstName, lastName, email, password, dateOfBirth } = req.body;
 
     if (!firstName || !lastName || !email || !password) {
-      return res.status(400).json({ message: 'Missing required fields' });
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
     const userRepository = queryRunner.manager.getRepository(User);
