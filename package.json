@@ -9,7 +9,7 @@
   "scripts": {
     "build": "tsc",
     "start": "ts-node src/index.ts",
-    "dev": "nodemon --watch src --exec ts-node src/index.ts",
+    "dev": "nodemon --require tsconfig-paths/register src/index.ts",
     "typeorm": "ts-node ./node_modules/typeorm/cli.js",
     "migration:run": "ts-node ./node_modules/typeorm/cli.js migration:run -d src/data-source.ts",
     "prepare:migrations": "mkdir -p src/migrations",

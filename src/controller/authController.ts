@@ -1,46 +1,94 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { User } from '../models/User';
+import { User } from '@/entity/User';
 import { AppDataSource } from '../data-source';
+import { Patient } from '@/entity/Patient';
 
+/**
+ * Registers a new user as a patient.
+ * 
+ * @param req - Express request object containing user registration data in the body.
+ * @param res - Express response object used to send the result of the registration process.
+ * @returns A JSON response indicating success or failure, and relevant user information on success.
+ */
 export const signUp = async (req: Request, res: Response) => {
+  const queryRunner = AppDataSource.createQueryRunner();
+  
   try {
-    const { firstName, lastName, email, password } = req.body;
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    const { firstName, lastName, email, password, dateOfBirth } = req.body;
 
     if (!firstName || !lastName || !email || !password) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    const userRepository = AppDataSource.getRepository(User);
+    const userRepository = queryRunner.manager.getRepository(User);
+    const patientRepository = queryRunner.manager.getRepository(Patient);
 
-    // Check if user already exists
     const existingUser = await userRepository.findOneBy({ email });
-
     if (existingUser) {
-      return res.status(409).json({ message: 'Email already registered' });
+      return res.status(409).json({ 
+        success: false,
+        message: 'Email already registered' 
+      });
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create new user
     const user = userRepository.create({
       firstName,
       lastName,
       email,
-      password: hashedPassword,
-      status: 'active' 
+      password: await bcrypt.hash(password, 10),
+      status: 'active',
+      loginBy: 'email',
+    });
+    await queryRunner.manager.save(user);
+
+    const patient = patientRepository.create({
+      dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+      user: user
     });
 
-    await userRepository.save(user);
+    await queryRunner.manager.save(patient);
 
-    return res.status(201).json({ message: 'User registered' });
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      return res.status(500).json({ message: 'Registration failed', error: error.message });
-    }
-    return res.status(500).json({ message: 'Registration failed', error: String(error) });
+    // Establish the relationship in both directions
+    patient.user = user;
+    user.patient = patient;
+
+    // Save both entities
+    await queryRunner.manager.save(patient);
+    await queryRunner.manager.save(user);
+
+    await queryRunner.commitTransaction();
+
+    // Verify the relationship
+    const savedUser = await userRepository.findOne({
+      where: { id: user.id },
+      relations: ['patient']
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'User registered successfully',
+      user: {
+        id: savedUser?.id,
+        email: savedUser?.email,
+        patientId: savedUser?.patient?.id
+      }
+    });
+
+  } catch (error) {
+    await queryRunner.rollbackTransaction();
+    console.error(error);
+    return res.status(500).json({ 
+      success: false,
+      message: 'Registration failed',
+      error: error instanceof Error ? error.message : String(error)
+    });
+  } finally {
+    await queryRunner.release();
   }
 };
 

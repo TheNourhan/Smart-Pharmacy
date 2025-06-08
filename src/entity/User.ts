@@ -4,8 +4,12 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   DeleteDateColumn,
-  Column
+  Column,
+  OneToOne,
+  JoinColumn
 } from 'typeorm';
+import { Patient } from '@/entity/Patient';
+import { Employee } from '@/entity/Employee';
 
 @Entity('users')
 export class User {
@@ -59,4 +63,12 @@ export class User {
 
   @Column({ nullable: true })
   googleId?: string;
+
+  @OneToOne(() => Patient, patient => patient.user, { cascade: true })
+  @JoinColumn({ name: "patientId" })
+  patient?: Patient;
+
+  @OneToOne(() => Employee, employee => employee.user, { cascade: true })
+  @JoinColumn({ name: "employeeId" })
+  employee?: Employee;
 }
