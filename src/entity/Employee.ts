@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, ManyToOne, OneToMany } from "typeorm"
 import { User } from "./User"
+// import { Appointment } from "./Patient"
 
 @Entity()
 export class Employee {
@@ -44,4 +45,8 @@ export class Availability {
     default: 'av'
   })
   status!: 'av' | 'scheduled' | 'completed' | 'cancelled' | 'no-show';
+
+  // (Optional) If you want to be able to navigate from an availability to its appointment:
+  // @OneToOne(() => Appointment, (appointment) => appointment.availability)
+  // appointment?: Appointment;
 }

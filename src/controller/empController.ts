@@ -9,22 +9,48 @@ import { Employee, Availability } from '@/entity/Employee';
  * @param res - Express response object used to send the result of the creation process.
  * @returns A JSON response indicating success or failure, and the created availability data on success.
  */
+
 export const createAvailability = async (req: Request, res: Response) => {
   try {
-    const employeeId = (req as any).user.id;
-    const { date, startTime, endTime} = req.body;
+    const userId = (req as any).user.id;
+    const { date, startTime, endTime } = req.body;
 
     if (!date || !startTime || !endTime) {
-      return res.status(400).json({ success: false, message: 'Missing required fields' });
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields',
+      });
     }
 
     const employeeRepo = AppDataSource.getRepository(Employee);
     const availabilityRepo = AppDataSource.getRepository(Availability);
 
-    const employee = await employeeRepo.findOneBy({ user: employeeId });
+    const employee = await employeeRepo.findOne({
+      where: { user: { id: userId } },
+    });
 
     if (!employee) {
-      return res.status(404).json({ success: false, message: 'Employee not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Employee not found',
+      });
+    }
+
+    // Check if availability already exists for this employee
+    const existing = await availabilityRepo.findOne({
+      where: {
+        employee: { id: employee.id },
+        date,
+        startTime,
+        endTime,
+      },
+    });
+
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        message: 'This availability slot already exists for the employee',
+      });
     }
 
     const availability = availabilityRepo.create({
@@ -37,10 +63,17 @@ export const createAvailability = async (req: Request, res: Response) => {
 
     await availabilityRepo.save(availability);
 
-    return res.status(201).json({ success: true, message: 'Availability created', availability });
+    return res.status(201).json({
+      success: true,
+      message: 'Availability created',
+      availability,
+    });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: 'Internal Server Error' });
+    console.error('Create availability error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal Server Error',
+    });
   }
 };
 
