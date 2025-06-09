@@ -1,6 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, ManyToOne } from "typeorm"
+import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, ManyToOne, OneToMany } from "typeorm"
 import { User } from "./User"
 import { Availability, Employee } from "./Employee";
+import { Prescription } from "./Prescription";
 
 @Entity()
 export class Patient {
@@ -13,6 +14,9 @@ export class Patient {
   @OneToOne(() => User, user => user.patient)
   @JoinColumn({ name: "userId" })
   user!: User;
+
+  @OneToMany(() => Prescription, (prescription) => prescription.patient)
+  prescriptions!: Prescription[];
 }
 
 @Entity('appointment')
@@ -31,7 +35,7 @@ export class Appointment {
   @OneToOne(() => Availability, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'availabilityId' })
   availability!: Availability;
-  
+
   @Column({
     type: 'varchar',
     length: 20,
