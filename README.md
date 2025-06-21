@@ -56,7 +56,7 @@ npm run migration:generate -- src/migrations/InitSchema -d src/data-source.ts
 - ▶️ B. Run migration (apply to DB):
 
 ```
-npm run migration:revert
+npm run migration:run
 ```
 
 - ⏪ C. Revert the last migration:
