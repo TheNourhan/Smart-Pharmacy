@@ -46,6 +46,24 @@ npm run dev
 ```
 > This runs nodemon with ts-node, automatically restarting on changes.
 
+##### **Steps to Use Migration**:
+
+- 🧱 A. Generate migration (after editing entities):
+```
+npm run migration:generate -- src/migrations/InitSchema -d src/data-source.ts
+```
+
+- ▶️ B. Run migration (apply to DB):
+
+```
+npm run migration:revert
+```
+
+- ⏪ C. Revert the last migration:
+```
+npm run migration:revert
+```
+
 #### Docker Setup:
 **Prerequisites:**
 - Docker: 27.1.1
