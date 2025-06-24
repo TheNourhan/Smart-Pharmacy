@@ -40,6 +40,22 @@ JWT_SECRET=your_jwt_secret
 CREATE DATABASE smart_pharmacy_db;
 ```
 
+- ☁️ **AWS S3 Setup (for Image Uploads)**
+This project uses AWS S3 to store uploaded images (e.g., prescriptions). You’ll need to configure an S3 bucket and add credentials to your `.env` file.
+
+✅ Steps:
+1. Go to [AWS S3 Console](https://s3.console.aws.amazon.com/s3/)
+2. Create an S3 Bucket.
+3. Create AWS IAM User.
+4. Add S3 credentials to `.env`:
+```
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_REGION=your_region
+AWS_BUCKET_NAME=your_bucket_name
+```
+
+
 - 🔨 Run the Development Server
 ```
 npm run dev
