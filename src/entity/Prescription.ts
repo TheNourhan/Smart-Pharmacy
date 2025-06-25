@@ -8,6 +8,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Patient } from './Patient';
+import { Medication } from './Medication';
 
 @Entity('doctor')
 export class Doctor {
@@ -55,6 +56,9 @@ export class Prescription {
 
   @ManyToOne(() => Patient, (patient) => patient.prescriptions, { onDelete: 'CASCADE' })
   patient!: Patient;
+
+  @OneToMany(() => Medication, (medication) => medication.prescription)
+  medications!: Medication[];
 
   @ManyToOne(() => Doctor, (doctor) => doctor.prescriptions, { onDelete: 'SET NULL' })
   doctor?: Doctor;

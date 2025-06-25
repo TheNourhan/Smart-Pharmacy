@@ -4,6 +4,8 @@ import { Doctor, Hospital, Prescription } from '@/entity/Prescription';
 import { Patient } from '@/entity/Patient';
 import s3 from '@/config/s3';
 import { DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { Medication } from '@/entity/Medication';
+import { Product } from '@/entity/Product';
 
 export const createPrescription = async (req: Request, res: Response) => {
   try {
@@ -356,9 +358,119 @@ export const deletePrescriptions = async (req: Request, res: Response) => {
 };
 
 export const getPrescriptionMedications = async (req: Request, res: Response) => {
-  
+  try {
+    const prescriptionId = parseInt(req.params.id);
+
+    if (isNaN(prescriptionId)) {
+      return res.status(400).json({ success: false, error: 'Invalid prescription ID' });
+    }
+
+    const prescriptionRepo = AppDataSource.getRepository(Prescription);
+    const prescription = await prescriptionRepo.findOne({
+      where: { prescriptionID: prescriptionId },
+    });
+
+    if (!prescription) {
+      return res.status(404).json({ success: false, error: 'Prescription not found' });
+    }
+
+    const medicationRepo = AppDataSource.getRepository(Medication);
+    const medications = await medicationRepo.find({
+      where: { prescription: { prescriptionID: prescriptionId } },
+      relations: ['product'],
+      order: { createdAt: 'DESC' },
+    });
+
+    const result = medications.map((med) => ({
+      id: med.id,
+      durationStart: med.durationStart,
+      durationEnd: med.durationEnd,
+      reasonForUse: med.reasonForUse,
+      frequency: med.frequency,
+      description: med.description,
+      createdAt: med.createdAt,
+      updatedAt: med.updatedAt,
+      product: med.product
+        ? {
+            id: med.product.id,
+            brandName: med.product.brandName,
+            genericName: med.product.genericName,
+            price: med.product.price,
+            dosageForm: med.product.dosageForm,
+            quantity: med.product.quantity,
+            imageURL: med.product.imageURL,
+          }
+        : null,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      message: 'Medications retrieved successfully',
+      medications: result,
+    });
+  } catch (err) {
+    console.error('Get Medications Error:', err);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
+  }
 };
 
 export const addPrescriptionMedications = async (req: Request, res: Response) => {
-  
+  try {
+    const prescriptionId = parseInt(req.params.id);
+    const medicationRepo = AppDataSource.getRepository(Medication);
+    const prescriptionRepo = AppDataSource.getRepository(Prescription);
+    const productRepo = AppDataSource.getRepository(Product);
+
+    const prescription = await prescriptionRepo.findOneBy({ prescriptionID: prescriptionId });
+
+    if (!prescription) {
+      return res.status(404).json({ success: false, message: 'Prescription not found' });
+    }
+
+    const medications = Array.isArray(req.body) ? req.body : [req.body];
+
+    const toInsert: Medication[] = [];
+
+    for (const med of medications) {
+      const {
+        productId,
+        durationStart,
+        durationEnd,
+        reasonForUse,
+        frequency,
+        description,
+      } = med;
+
+      let product: Product | null = null;
+      if (productId) {
+        product = await productRepo.findOneBy({ id: productId });
+        if (!product) {
+          return res.status(400).json({ success: false, message: `Product with id ${productId} not found` });
+        }
+      }
+
+      const medication = medicationRepo.create({
+        prescription: prescription,
+        product: product ?? undefined,
+        durationStart,
+        durationEnd,
+        reasonForUse,
+        frequency,
+        description,
+      });
+
+      toInsert.push(medication);
+    }
+
+    await medicationRepo.save(toInsert);
+
+    return res.status(201).json({
+      success: true,
+      message: 'Medications added successfully',
+      medications: toInsert,
+    });
+  } catch (err) {
+    console.error('Add Medications Error:', err);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
+  }
 };
