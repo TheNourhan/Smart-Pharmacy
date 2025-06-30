@@ -1,8 +1,11 @@
-import { createAppointment, getAllAvailabilities, getAppointment, getMyAppointments } from '@/controller/patientController';
+import { createAppointment, getAllAvailabilities, getAppointment, getMyAppointments, getPatientProfile, updatePatient } from '@/controller/patientController';
 import { authMiddleware } from '@/middleware/authMiddleware';
 import express from 'express';
 
 const router = express.Router();
+
+router.get('/me', authMiddleware, getPatientProfile);
+router.put('/me', authMiddleware, updatePatient);
 
 router.post('/appointments', authMiddleware, createAppointment);
 router.get('/appointments/:id', authMiddleware, getAppointment);

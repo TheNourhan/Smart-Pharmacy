@@ -474,3 +474,42 @@ export const addPrescriptionMedications = async (req: Request, res: Response) =>
     return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 };
+
+export const updateMedication = async (req: Request, res: Response) => {
+  const medicationRepo = AppDataSource.getRepository(Medication);
+  const id = parseInt(req.params.id);
+
+  try {
+    const medication = await medicationRepo.findOneBy({ id });
+
+    if (!medication) {
+      return res.status(404).json({ success: false, message: 'Medication not found' });
+    }
+
+    medicationRepo.merge(medication, req.body);
+    const result = await medicationRepo.save(medication);
+
+    res.json({success: true, message: 'Medication updated successfully', medication: result });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Failed to update medication' });
+  }
+};
+
+export const deleteMedication = async (req: Request, res: Response) => {
+  const medicationRepo = AppDataSource.getRepository(Medication);
+  const id = parseInt(req.params.id);
+
+  try {
+    const medication = await medicationRepo.findOneBy({ id });
+
+    if (!medication) {
+      return res.status(404).json({ success: false, message: 'Medication not found' });
+    }
+
+    await medicationRepo.remove(medication);
+
+    res.json({ success: true, message: 'Medication deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Failed to delete medication' });
+  }
+};

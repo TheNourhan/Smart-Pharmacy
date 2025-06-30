@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { AppDataSource } from '../data-source';
 import { Employee, Availability } from '@/entity/Employee';
+import { Appointment } from '@/entity/Patient';
+import { User } from '@/entity/User';
 
 /**
  * Creates a new availability entry for an employee.
@@ -107,5 +109,221 @@ export const getAvailability = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error fetching availability:', error);
     return res.status(500).json({ success: false, message: 'Internal Server Error' });
+  }
+};
+
+export const getEmpProfile = async (req: Request, res: Response) => {
+  const employeeRepo = AppDataSource.getRepository(Employee);
+  const userId = (req as any).user.id;
+
+  try {
+    const employee = await employeeRepo.findOne({
+      where: { user: { id: userId } },
+      relations: ['user'],
+    });
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: 'Employee not found',
+      });
+    }
+
+   const { password, otpCode, otpActiveAt, deletedAt, ...safeUser } = employee.user;
+  const safeEmployee = {
+    ...employee,
+    user: safeUser,
+  };
+
+  res.json({ success: true, employee: safeEmployee });
+
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Failed to fetch profile' });
+  }
+};
+
+export const updateEmp = async (req: Request, res: Response) => {
+  const employeeRepo = AppDataSource.getRepository(Employee);
+  const userRepo = AppDataSource.getRepository(User);
+  const userId = (req as any).user.id;
+
+  try {
+    const employee = await employeeRepo.findOne({
+      where: { user: { id: userId } },
+      relations: ['user'],
+    });
+
+    if (!employee || !employee.user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Employee or related user not found',
+      });
+    }
+
+    // Extract nested user data
+    const userData = req.body.user || {};
+
+    // Update user fields safely
+    const userUpdates = ['firstName', 'lastName', 'phone', 'email'];
+    for (const key of userUpdates) {
+      if (key in userData) {
+        (employee.user as any)[key] = userData[key];
+      }
+    }
+
+    await userRepo.save(employee.user); // Save user changes
+
+    // Update employee fields (e.g., hourlySalary)
+    employeeRepo.merge(employee, req.body);
+    const updatedEmployee = await employeeRepo.save(employee);
+
+    // Sanitize output
+    const {
+      password,
+      otpCode,
+      otpActiveAt,
+      deletedAt,
+      status,
+      isActive,
+      isPhoneVerified,
+      isEmailVerified,
+      ...safeUser
+    } = updatedEmployee.user;
+
+    const safeEmployee = {
+      ...updatedEmployee,
+      user: safeUser,
+    };
+
+    res.json({ success: true, employee: safeEmployee });
+  } catch (error) {
+    console.error('Update employee error:', error);
+    res.status(500).json({ success: false, error: 'Failed to update profile' });
+  }
+};
+
+export const updateAvailability = async (req: Request, res: Response) => {
+  const availabilityRepo = AppDataSource.getRepository(Availability);
+  const id = parseInt(req.params.id);
+
+  try {
+    const availability = await availabilityRepo.findOneBy({ id });
+
+    if (!availability) {
+      return res.status(404).json({ success: false, message: 'Availability not found' });
+    }
+
+    availabilityRepo.merge(availability, req.body);
+    const updated = await availabilityRepo.save(availability);
+
+    res.json({
+      success: true,
+      message: 'Availability updated successfully',
+      availability: updated});
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Failed to update availability' });
+  }
+};
+
+/**
+ * need to check first if the availability is linked to any appointment
+ * If it is, we should not delete it, or we can set the status to 'cancelled' instead of deleting it.
+ * If it is not linked to any appointment, we can delete it permanently.
+ */
+export const deleteAvailability = async (req: Request, res: Response) => {
+  const availabilityRepo = AppDataSource.getRepository(Availability);
+  const id = parseInt(req.params.id);
+
+  try {
+    const availability = await availabilityRepo.findOneBy({ id });
+
+    if (!availability) {
+      return res.status(404).json({ success: false, message: 'Availability not found' });
+    }
+
+    await availabilityRepo.remove(availability); // Permanently delete
+
+    res.json({ success: true, message: 'Availability deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Failed to delete availability' });
+  }
+};
+
+export const getMyAppointments = async (req: Request, res: Response) => {
+  const appointmentRepo = AppDataSource.getRepository(Appointment);
+  const employeeRepo = AppDataSource.getRepository(Employee);
+
+  const userId = (req as any).user.id;
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 10;
+  const skip = (page - 1) * limit;
+
+  try {
+    const employee = await employeeRepo.findOne({
+      where: { user: { id: userId } },
+    });
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: 'Employee not found',
+      });
+    }
+
+    const [appointments, total] = await appointmentRepo.findAndCount({
+      where: { employee: { id: employee.id } },
+      relations: ['employee', 'patient', 'availability'],
+      skip,
+      take: limit,
+    });
+
+    res.json({
+      success: true,
+      data: appointments,
+      currentPage: page,
+      totalItems: total,
+      totalPages: Math.ceil(total / limit),
+      limit: limit,
+    });
+
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Failed to fetch appointments' });
+  }
+};
+
+
+export const getAppointment = async (req: Request, res: Response) => {
+  const appointmentRepo = AppDataSource.getRepository(Appointment);
+  const employeeRepo = AppDataSource.getRepository(Employee);
+  const id = parseInt(req.params.id);
+  const userId = (req as any).user.id;
+
+  try {
+    const employee = await employeeRepo.findOne({
+      where: { user: { id: userId } },
+    });
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: 'Employee not found',
+      });
+    }
+    
+    const appointment = await appointmentRepo.findOne({
+      where: {
+        id,
+        employee: { id: employee.id },
+      },
+      relations: ['employee', 'patient', 'availability'], // optional
+    });
+
+    if (!appointment) {
+      return res.status(404).json({ success: false, message: 'Appointment not found' });
+    }
+
+    res.json({ success: true, appointment });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Failed to fetch appointment' });
   }
 };

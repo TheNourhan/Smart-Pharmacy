@@ -1,4 +1,4 @@
-import { addPrescriptionMedications, createPrescription, deletePrescriptions, getMyPrescriptions, getPrescription, getPrescriptionMedications, updatePrescriptions } from '@/controller/prescriptionController';
+import { addPrescriptionMedications, createPrescription, deleteMedication, deletePrescriptions, getMyPrescriptions, getPrescription, getPrescriptionMedications, updateMedication, updatePrescriptions } from '@/controller/prescriptionController';
 import { authMiddleware } from '@/middleware/authMiddleware';
 import express from 'express';
 import upload from '@/middleware/uploadMiddleware';
@@ -12,5 +12,7 @@ router.put('/:id', authMiddleware, upload.single('image'), updatePrescriptions);
 router.delete('/:id', authMiddleware, deletePrescriptions);
 router.get('/:id/medications', authMiddleware, getPrescriptionMedications);
 router.post('/:id/medications', authMiddleware, addPrescriptionMedications);
+router.put('/medications/:id', authMiddleware, updateMedication);
+router.delete('/medications/:id', authMiddleware, deleteMedication);
 
 export default router;

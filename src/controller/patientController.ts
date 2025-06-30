@@ -1,6 +1,7 @@
 import { AppDataSource } from '@/data-source';
 import { Availability } from '@/entity/Employee';
 import { Appointment, Patient } from '@/entity/Patient';
+import { User } from '@/entity/User';
 import { Request, Response } from 'express';
 
 
@@ -245,5 +246,78 @@ export const getAllAvailabilities = async (req: Request, res: Response) => {
       success: false,
       message: 'Internal Server Error',
     });
+  }
+};
+
+export const getPatientProfile = async (req: Request, res: Response) => {
+  const patientRepo = AppDataSource.getRepository(Patient);
+  const userId = (req as any).user.id;
+
+  try {
+    const patient = await patientRepo.findOne({
+      where: { user: { id: userId } },
+      relations: ['user'],
+    });
+
+    if (!patient) {
+      return res.status(404).json({ success: false, message: 'Patient not found' });
+    }
+
+    const { password, otpCode, otpActiveAt, deletedAt, isActive, isEmailVerified, status, googleId, ...safeUser } = patient.user;
+
+    res.json({
+      success: true,
+      patient: {
+        ...patient,
+        user: safeUser,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Failed to fetch patient profile' });
+  }
+};
+
+export const updatePatient = async (req: Request, res: Response) => {
+  const patientRepo = AppDataSource.getRepository(Patient);
+  const userRepo = AppDataSource.getRepository(User);
+  const userId = (req as any).user.id;
+
+  try {
+    const patient = await patientRepo.findOne({
+      where: { user: { id: userId } },
+      relations: ['user'],
+    });
+
+    if (!patient) {
+      return res.status(404).json({ success: false, message: 'Patient not found' });
+    }
+
+    // Handle nested user data
+    const userData = req.body.user || {};
+    const userFields = ['firstName', 'lastName', 'email', 'phone'];
+
+    for (const field of userFields) {
+      if (field in userData) {
+        (patient.user as any)[field] = userData[field];
+      }
+    }
+    await userRepo.save(patient.user);
+
+    // Merge and update patient-specific fields (e.g. dateOfBirth)
+    patientRepo.merge(patient, req.body);
+    const updated = await patientRepo.save(patient);
+
+    const { password, otpCode, otpActiveAt, deletedAt, isActive, isEmailVerified, isPhoneVerified, ...safeUser } = updated.user;
+
+    res.json({
+      success: true,
+      patient: {
+        ...updated,
+        user: safeUser,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, error: 'Failed to update patient profile' });
   }
 };
