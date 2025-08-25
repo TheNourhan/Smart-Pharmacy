@@ -19,7 +19,7 @@ export const signUp = async (req: Request, res: Response) => {
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
-    const { firstName, lastName, email, password, dateOfBirth } = req.body;
+    const { firstName, lastName, phone, email, password, dateOfBirth } = req.body;
 
     if (!firstName || !lastName || !email || !password) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
@@ -40,6 +40,7 @@ export const signUp = async (req: Request, res: Response) => {
       firstName,
       lastName,
       email,
+      phone,
       password: await bcrypt.hash(password, 10),
       status: 'active',
       loginBy: 'email',
